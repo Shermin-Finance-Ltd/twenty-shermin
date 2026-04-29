@@ -1,0 +1,8 @@
+# Default reviewer for all Shermin-specific paths.
+# Upstream Twenty paths intentionally have no owner here — leave to PR reviewers.
+
+/SHERMIN.md                          @bgood11
+/shermin/                            @bgood11
+/packages/shermin-crm-app/           @bgood11
+/.github/CODEOWNERS                  @bgood11
+/.github/workflows/shermin-ci.yaml   @bgood11

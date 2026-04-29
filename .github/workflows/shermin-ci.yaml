@@ -1,0 +1,51 @@
+name: shermin-ci
+
+on:
+  pull_request:
+    paths:
+      - 'shermin/**'
+      - 'packages/shermin-crm-app/**'
+      - '.github/workflows/shermin-ci.yaml'
+      - '.github/CODEOWNERS'
+      - 'SHERMIN.md'
+  push:
+    branches: [main]
+    paths:
+      - 'shermin/**'
+      - 'packages/shermin-crm-app/**'
+      - '.github/workflows/shermin-ci.yaml'
+
+jobs:
+  docs-lint:
+    name: Lint Shermin docs and config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check SHERMIN.md exists
+        run: test -f SHERMIN.md
+
+      - name: Check CODEOWNERS exists
+        run: test -f .github/CODEOWNERS
+
+      - name: Markdown link check (Shermin docs only)
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          folder-path: 'shermin/docs'
+          config-file: '.github/markdown-link-check-config.json'
+        continue-on-error: true
+
+  app-build:
+    name: Build shermin-crm-app
+    runs-on: ubuntu-latest
+    if: hashFiles('packages/shermin-crm-app/package.json') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn nx build shermin-crm-app

@@ -1,0 +1,10 @@
+{
+  "ignorePatterns": [
+    { "pattern": "^https?://crm\\.shermin\\.co\\.uk" },
+    { "pattern": "^https?://api\\.shermin\\.co\\.uk" }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 2,
+  "fallbackRetryDelay": "30s"
+}
