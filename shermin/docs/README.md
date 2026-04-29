@@ -15,11 +15,13 @@ Phase 0 discovery is in progress. Docs marked **(in progress)** are being drafte
 | [role-permissions.md](role-permissions.md) | done — BDM / Sales Support / Admin matrix covering object, field, stage-transition and settings access | Workstream B |
 | [sf-field-mapping.md](sf-field-mapping.md) | done — Twenty `retailer` to SF Account/Contact field map for the Setup-in-Stax push, plus the three new SF custom fields | Workstream B |
 | [sf-discovery.md](sf-discovery.md) | done — audit of existing SF integration patterns, custom field naming conventions, JWT bearer auth pattern, and recommended sandbox / ECA / integration user setup for the new Twenty push | Workstream C |
-| [discovery/current-state.md](discovery/current-state.md) | (in progress) | Workstream D |
-| [discovery/interview-tony.md](discovery/interview-tony.md) | (in progress) | Workstream D |
-| [discovery/interview-gemma.md](discovery/interview-gemma.md) | (in progress) | Workstream D |
-| [discovery/interview-bdm.md](discovery/interview-bdm.md) | (in progress) | Workstream D |
-| [discovery/interview-sales-support.md](discovery/interview-sales-support.md) | (in progress) | Workstream D |
+| [discovery/README.md](discovery/README.md) | done — index of the discovery folder with one-line summaries per file | Workstream D |
+| [discovery/current-state.md](discovery/current-state.md) | done — what we think we know about retailer onboarding today, with inferences flagged for confirmation | Workstream D |
+| [discovery/interview-tony.md](discovery/interview-tony.md) | done — 30-min commercial interview guide covering pipeline visibility, BDM adoption, KPIs, self-employed vs PAYE | Workstream D |
+| [discovery/interview-gemma.md](discovery/interview-gemma.md) | done — 30-min operational interview guide covering Sales Support workflow, compliance, Setup-in-Stax, exception cases | Workstream D |
+| [discovery/interview-bdm.md](discovery/interview-bdm.md) | done — 20-min sample-BDM interview guide covering lead intake, info needs, mobile vs desktop | Workstream D |
+| [discovery/interview-sales-support.md](discovery/interview-sales-support.md) | done — 30-min Sales Support interview guide covering real-onboarding walk-through, compliance, Setup-in-Stax, checklists vs required fields | Workstream D |
+| [discovery/diff-vs-proposed-v1.md](discovery/diff-vs-proposed-v1.md) | done — twelve "if X then Y" pairs flagging where v1 may need to change once interviews land | Workstream D |
 
 ## Operations
 
