@@ -23,11 +23,17 @@ Phase 0 discovery is in progress. Docs marked **(in progress)** are being drafte
 | [discovery/interview-sales-support.md](discovery/interview-sales-support.md) | done — 30-min Sales Support interview guide covering real-onboarding walk-through, compliance, Setup-in-Stax, checklists vs required fields | Workstream D |
 | [discovery/diff-vs-proposed-v1.md](discovery/diff-vs-proposed-v1.md) | done — twelve "if X then Y" pairs flagging where v1 may need to change once interviews land | Workstream D |
 
+## Phase 0 — Supporting
+
+| Doc | Status | Owner |
+|---|---|---|
+| [licensing-note.md](licensing-note.md) | done, plain-English AGPL-3.0 memo for Tony / legal sign-off, concludes internal-use is almost certainly fine with caveats around contractor scope and any future external exposure | Workstream E |
+| [existing-shermin-infra.md](existing-shermin-infra.md) | done, audit of existing Shermin GitHub repos identifying the house Terraform / OIDC / Secrets Manager / SF JWT auth patterns the CRM should align with, plus repo-by-repo notes and 8 concrete recommendations | Workstream E |
+
 ## Operations
 
-- [upstream-merge-runbook.md](upstream-merge-runbook.md) — monthly Twenty upstream bump procedure.
-- `disaster-runbook.md` — TODO Phase 1.
-- `licensing-note.md` — TODO Phase 0 close-out (AGPL-3.0 implications memo for Tony / legal).
+- [upstream-merge-runbook.md](upstream-merge-runbook.md), monthly Twenty upstream bump procedure.
+- `disaster-runbook.md`, TODO Phase 1.
 
 ## How agents should add to this index
 
