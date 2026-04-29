@@ -14,7 +14,7 @@ Phase 0 discovery is in progress. Docs marked **(in progress)** are being drafte
 | [stage-requirements.md](stage-requirements.md) | (in progress) | Workstream B |
 | [role-permissions.md](role-permissions.md) | (in progress) | Workstream B |
 | [sf-field-mapping.md](sf-field-mapping.md) | (in progress) | Workstream B |
-| [sf-discovery.md](sf-discovery.md) | (in progress) | Workstream C |
+| [sf-discovery.md](sf-discovery.md) | done — audit of existing SF integration patterns, custom field naming conventions, JWT bearer auth pattern, and recommended sandbox / ECA / integration user setup for the new Twenty push | Workstream C |
 | [discovery/current-state.md](discovery/current-state.md) | (in progress) | Workstream D |
 | [discovery/interview-tony.md](discovery/interview-tony.md) | (in progress) | Workstream D |
 | [discovery/interview-gemma.md](discovery/interview-gemma.md) | (in progress) | Workstream D |
