@@ -24,23 +24,31 @@ Upstream files we never modify:
 
 ## Project context
 
-- **Goal:** lightweight bespoke CRM for retailer onboarding, run by Sales Support with BDM input on early stages.
-- **Pipeline:** Lead → Application → Compliance check → Contract → Setup in Stax → Live.
-- **Salesforce integration:** one-way push at "Setup in Stax" stage — creates Account + Contact via Composite API upsert.
-- **Hosting:** AWS eu-west-2 (London), single EC2 + RDS Postgres + ALB. ~£85/month.
-- **Pinned to Twenty:** `v2.1.0` (latest stable as of fork date 2026-04-29).
+- **Goal:** lightweight bespoke CRM for retailer onboarding, run by Sales Support with BDM input on early stages. Hands off to Salesforce as production at the "Setup in Stax" point.
+- **Two pipelines on the Retailer object:**
+  - **Prospecting** (BDM-owned): Prospect → Engaged → On Hold → Dead → Converted
+  - **Onboarding** (Sales Support-owned): File Collection → SMT Sign Off → Sent to Lender → Lender Approved → Tech Setup → Live → Dead
+- **Hosting:** AWS eu-west-2 (London), single EC2 + RDS Postgres + ALB in the dev account. ~£77/month while running.
+- **Pinned to Twenty:** `v2.1.0`.
 
-## Status
+## Read first
 
-**Phase 1 — v0 deploy live.** Vanilla Twenty CRM running in the Shermin dev AWS account, single user (Barney), no Salesforce integration yet.
+- [`shermin/docs/PLAN.md`](shermin/docs/PLAN.md) — **single source of truth** for what's done, what's in progress, what's deferred. Read this if picking up the project.
+- [`shermin/docs/v1-customisation.md`](shermin/docs/v1-customisation.md) — what's automated by `setup-shermin-crm.sh` vs what needs UI.
 
-- **URL:** `https://twenty-shermin-v0-alb-2090009733.eu-west-2.elb.amazonaws.com` (self-signed cert, click through warning)
-- **Workspace name:** Stax CRM
-- **Cost:** ~£77/month while running
+## Status (Phase 1 v1)
 
-Phase 0 discovery docs are merged on `main` under [`shermin/docs/`](shermin/docs/).
-Phase 1 v0 deploy story lives in [`shermin/docs/v0-deploy-log.md`](shermin/docs/v0-deploy-log.md).
-Operational quick-reference in [`shermin/infra/README.md`](shermin/infra/README.md).
+Workspace **Stax CRM** is live with all spec items in place except the conversion workflow content (3-min UI task) and full Stax brand colours (deferred to v2 — needs front-end source build).
+
+| Live | Pending | Deferred |
+|---|---|---|
+| Renames (Companies → Retailers, People → Contacts) | Conversion workflow trigger + steps (UI task) | Full brand colour theme (front-end source build) |
+| Staff custom object + 19 fields, restricted to HR Admin | Assigning HR Admin role to people (Settings → Members) | Per-stage prescriptive checklists ("we'll build that after") |
+| Two pipeline kanbans (Prospecting + Onboarding) | Salesforce push Lambda | Multi-AZ RDS + deletion protection (before real data) |
+| Stax logo uploaded | Real domain + ACM cert | CloudWatch alarms |
+| 100 MB file upload cap, 7-year FCA retention | Per-user role assignments | |
+
+**URL:** `https://twenty-shermin-v0-alb-2090009733.eu-west-2.elb.amazonaws.com` (self-signed cert, click through warning).
 
 ## Common operations
 

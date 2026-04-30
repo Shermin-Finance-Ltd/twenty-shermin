@@ -1,12 +1,11 @@
 # Shermin CRM — docs index
 
-## Status
+## Read first
 
-**Phase 1 — v0 live.** Twenty CRM is running in the dev AWS account. See [`v0-deploy-log.md`](v0-deploy-log.md) for the chronological story.
-
-## Plan & decisions
-
-- The approved v1 plan lives outside the repo (Barney's local plans dir). The headline decisions are summarised in [`SHERMIN.md`](../../SHERMIN.md).
+- [**`PLAN.md`**](PLAN.md) — single source of truth for the project. What was asked, what's done, what's pending, what's deferred. Start here.
+- [`../../SHERMIN.md`](../../SHERMIN.md) — top-level repo entry point (status + URL + how to do common things).
+- [`v1-customisation.md`](v1-customisation.md) — what's automated by `setup-shermin-crm.sh` vs UI.
+- [`v0-deploy-log.md`](v0-deploy-log.md) — chronological log of the AWS infra deploy + gotchas hit.
 
 ## Phase 1 — v0 deploy
 
