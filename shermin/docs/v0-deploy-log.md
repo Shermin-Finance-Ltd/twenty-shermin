@@ -81,9 +81,19 @@ After fixes, deploy completed in 23×5s = ~2 minutes. ALB target took another ~6
 
 ### File attachments (where they live)
 
-Files attached to Twenty records — Companies, People, Notes — go to S3 bucket `twenty-shermin-v0-attachments-992914515467` under `<workspace-uuid>/<file-uuid>/<filename>`. Configured at deploy time via the `STORAGE_TYPE=s3` family of env vars. Versioning on, SSE-S3 encryption.
+Files uploaded anywhere in Twenty go to S3 bucket `twenty-shermin-v0-attachments-992914515467` under `<workspace-uuid>/<file-uuid>/<filename>`. Configured at deploy time via the `STORAGE_TYPE=s3` family of env vars. Versioning on, SSE-S3 encryption.
 
-**Custom objects don't get native attachments in Twenty v2.1.0.** When we build the `Retailer` custom object in Phase 1, we attach contract / compliance / KYC documents as `Note` records related to the Retailer. Note is a standard Twenty object with full attachment support. See [`data-model.md`](data-model.md) for the spec.
+Twenty 2.1 has **three upload surfaces**, all of which use the same storage backend and the same per-file size cap:
+
+| Surface | What | Where files appear |
+|---|---|---|
+| **`FILES` field type** on any object (standard or custom) | Add a multi-file field to the object schema. Drag-drop in the record view. | Inline in the record's main view. |
+| **Attachments via the side panel** | Twenty's right-hand "Files" / "Attachments" tab on a record. | Side panel. |
+| **Note attachments** | Files attached to Note records. Useful for "this file goes with this comment". | On the Note. |
+
+For our future custom `Retailer` object, we use a `documents: Files` field — files appear inline on the retailer record, no side-panel hunting. See [`data-model.md`](data-model.md) for the spec.
+
+(Earlier versions of these docs claimed custom objects had no first-class file fields. That was correct for early Twenty 2.0 but no longer for 2.1. The `FILES` field type is registered in `packages/twenty-shared/src/types/FieldMetadataType.ts` with no custom-object whitelist.)
 
 ### 100 MB upload cap
 
