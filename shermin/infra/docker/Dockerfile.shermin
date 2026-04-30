@@ -16,6 +16,16 @@
 #
 # Eventually we should upstream a STORAGE_MAX_FILE_SIZE env-var override and
 # delete this Dockerfile.
+#
+# v1 NOTE on branding:
+#   We attempted CSS-variable overrides + JS-bundle sed-patching to apply Stax
+#   slate blue + pink throughout the UI. CSS variable overrides DID load
+#   correctly (verified via DevTools) but Twenty's components don't consume
+#   them — they read from a JS theme provider (emotion / styled-components).
+#   JS-bundle patching worked but was too brittle for v1 (breaks on every
+#   upstream merge, requires per-version re-validation). Reverted to "logo +
+#   workspace name" branding only. Full theme override is a v2 task that
+#   needs a proper front-end source build, not a sed-patch.
 
 ARG TWENTY_TAG=v2.1.0
 FROM twentycrm/twenty:${TWENTY_TAG}
@@ -25,7 +35,7 @@ FROM twentycrm/twenty:${TWENTY_TAG}
 ARG TWENTY_TAG
 ARG MAX_FILE_SIZE=100MB
 
-# Patch the compiled settings constant.
+# Patch the compiled settings constant for upload size.
 RUN set -eux; \
     SETTINGS_FILE=/app/packages/twenty-server/dist/engine/constants/settings/index.js; \
     test -f "$SETTINGS_FILE"; \
@@ -34,67 +44,6 @@ RUN set -eux; \
     grep -q "maxFileSize: '${MAX_FILE_SIZE}'" "$SETTINGS_FILE"; \
     echo "Patched maxFileSize to ${MAX_FILE_SIZE}"
 
-# Stax brand override CSS — for the small subset of UI elements that consume
-# CSS variables. Most colours are baked into the JS bundle (see below), but
-# the CSS override remains as belt-and-braces.
-COPY shermin-overrides.css /app/packages/twenty-server/dist/front/shermin-overrides.css
-
-RUN set -eux; \
-    INDEX=/app/packages/twenty-server/dist/front/index.html; \
-    test -f "$INDEX"; \
-    grep -q "</head>" "$INDEX"; \
-    sed -i 's|</head>|<link rel="stylesheet" href="/shermin-overrides.css" data-shermin="true" />\n</head>|' "$INDEX"; \
-    grep -q "shermin-overrides.css" "$INDEX"; \
-    echo "Injected shermin-overrides.css link"
-
-# Patch the JS theme constants: replace Radix indigoP3 colour values with
-# Stax slate blue equivalents. Twenty uses styled-components reading from a
-# JS theme object, so the saturated brand colour comes from these literals,
-# NOT from CSS variables. This is the patch that actually changes button
-# colours / focus rings / active-state highlights.
-#
-# Display-P3 values for Stax slate blue scale (HSL 202°, 30% sat, lightness ramp
-# from 96% to 15%), normalised to 0..1 for use in color(display-p3 r g b):
-#   indigo1  (0.992 0.992 0.996) -> stax1  (0.957 0.969 0.976)
-#   indigo2  (0.971 0.977 0.998) -> stax2  (0.902 0.929 0.945)
-#   indigo3  (0.933 0.948 0.992) -> stax3  (0.800 0.855 0.882)
-#   indigo4  (0.885 0.914 1)     -> stax4  (0.694 0.773 0.816)
-#   indigo5  (0.831 0.87 1)      -> stax5  (0.592 0.698 0.749)
-#   indigo6  (0.767 0.814 0.995) -> stax6  (0.494 0.620 0.686)
-#   indigo7  (0.685 0.74 0.957)  -> stax7  (0.396 0.541 0.620)
-#   indigo8  (0.569 0.639 0.916) -> stax8  (0.302 0.467 0.553)
-#   indigo9  (0.276 0.384 0.837) -> stax9  (0.278 0.439 0.522)  <- BRAND
-#   indigo10 (0.234 0.343 0.801) -> stax10 (0.231 0.373 0.443)  <- HOVER
-#   indigo11 (0.256 0.354 0.755) -> stax11 (0.180 0.290 0.349)
-#   indigo12 (0.133 0.175 0.348) -> stax12 (0.110 0.173 0.208)
-RUN set -eux; \
-    JS_DIR=/app/packages/twenty-server/dist/front/assets; \
-    test -d "$JS_DIR"; \
-    # Find the JS file(s) containing the saturated indigo9 P3 value. Twenty
-    # 2.1 ships ~47 split chunks; the theme lives in just one of them, so
-    # we identify it by content and only patch that file (avoids surprises
-    # in unrelated chunks).
-    THEME_JS=$(grep -l 'color(display-p3 0.276 0.384 0.837)' "$JS_DIR"/index-*.js | head -1); \
-    test -n "$THEME_JS"; \
-    echo "Theme JS bundle identified: $THEME_JS"; \
-    sed -i \
-      -e 's/color(display-p3 0.992 0.992 0.996)/color(display-p3 0.957 0.969 0.976)/g' \
-      -e 's/color(display-p3 0.971 0.977 0.998)/color(display-p3 0.902 0.929 0.945)/g' \
-      -e 's/color(display-p3 0.933 0.948 0.992)/color(display-p3 0.800 0.855 0.882)/g' \
-      -e 's/color(display-p3 0.885 0.914 1)/color(display-p3 0.694 0.773 0.816)/g' \
-      -e 's/color(display-p3 0.831 0.87 1)/color(display-p3 0.592 0.698 0.749)/g' \
-      -e 's/color(display-p3 0.767 0.814 0.995)/color(display-p3 0.494 0.620 0.686)/g' \
-      -e 's/color(display-p3 0.685 0.74 0.957)/color(display-p3 0.396 0.541 0.620)/g' \
-      -e 's/color(display-p3 0.569 0.639 0.916)/color(display-p3 0.302 0.467 0.553)/g' \
-      -e 's/color(display-p3 0.276 0.384 0.837)/color(display-p3 0.278 0.439 0.522)/g' \
-      -e 's/color(display-p3 0.234 0.343 0.801)/color(display-p3 0.231 0.373 0.443)/g' \
-      -e 's/color(display-p3 0.256 0.354 0.755)/color(display-p3 0.180 0.290 0.349)/g' \
-      -e 's/color(display-p3 0.133 0.175 0.348)/color(display-p3 0.110 0.173 0.208)/g' \
-      "$THEME_JS"; \
-    grep -q 'color(display-p3 0.278 0.439 0.522)' "$THEME_JS"; \
-    echo "Verified: indigo9 -> Stax slate blue replacement landed in $THEME_JS"
-
 LABEL org.shermin.fork="twenty-shermin"
 LABEL org.shermin.upstream-tag="${TWENTY_TAG}"
 LABEL org.shermin.max-file-size="${MAX_FILE_SIZE}"
-LABEL org.shermin.brand="stax-slate-blue-pink"

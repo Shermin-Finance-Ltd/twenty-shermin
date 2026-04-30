@@ -23,16 +23,15 @@ SECRET_DB=$(terraform output -raw secret_arn_db)
 SECRET_APP=$(terraform output -raw secret_arn_twenty_app_secret)
 TWENTY_TAG=$(terraform output -json | jq -r '.twenty_image_tag.value // "v2.1.0"' 2>/dev/null || echo "v2.1.0")
 
-# Shermin image config — derived image with maxFileSize lift + Stax brand CSS.
-# Bump the suffix when changing the Dockerfile or override CSS so docker compose
-# recreates containers (rather than reusing the cached old image).
-SHERMIN_IMAGE_TAG="${TWENTY_TAG}-shermin5"
+# Shermin image config — derived image with maxFileSize lift only.
+# Bump the suffix when changing the Dockerfile so docker compose recreates
+# containers rather than reusing the cached old image.
+SHERMIN_IMAGE_TAG="${TWENTY_TAG}-shermin6"
 MAX_FILE_SIZE="${MAX_FILE_SIZE:-100MB}"
 
-# Encode the Dockerfile + shermin-overrides.css so we can transmit them inside
-# the SSM payload. Tar them together for atomic transfer.
-DOCKER_DIR="$(dirname "$0")/../docker"
-DOCKER_TAR_B64=$(tar -C "$DOCKER_DIR" -czf - Dockerfile.shermin shermin-overrides.css | base64 | tr -d '\n')
+# Encode the Dockerfile so we can transmit it inside the SSM payload.
+DOCKERFILE_PATH="$(dirname "$0")/../docker/Dockerfile.shermin"
+DOCKERFILE_B64=$(base64 < "$DOCKERFILE_PATH" | tr -d '\n')
 
 echo "EC2:           $EC2_ID"
 echo "ALB DNS:       $ALB_DNS"
@@ -56,14 +55,13 @@ SECRET_APP_ARN="__SECRET_APP__"
 TWENTY_TAG="__TWENTY_TAG__"
 SHERMIN_IMAGE_TAG="__SHERMIN_IMAGE_TAG__"
 MAX_FILE_SIZE="__MAX_FILE_SIZE__"
-DOCKER_TAR_B64="__DOCKER_TAR_B64__"
+DOCKERFILE_B64="__DOCKERFILE_B64__"
 
 cd /opt/twenty
 
-echo "[deploy] extracting docker build context (Dockerfile + brand CSS)"
+echo "[deploy] writing Dockerfile.shermin"
 mkdir -p /opt/twenty/docker
-echo "$DOCKER_TAR_B64" | base64 -d | tar -C /opt/twenty/docker -xzf -
-ls -la /opt/twenty/docker
+echo "$DOCKERFILE_B64" | base64 -d > /opt/twenty/docker/Dockerfile.shermin
 
 echo "[deploy] building patched Twenty image (twenty-shermin:$SHERMIN_IMAGE_TAG)"
 # Pull upstream first so docker build can use it as the FROM
@@ -209,7 +207,7 @@ REMOTE_SCRIPT=${REMOTE_SCRIPT//__SECRET_APP__/$SECRET_APP}
 REMOTE_SCRIPT=${REMOTE_SCRIPT//__TWENTY_TAG__/$TWENTY_TAG}
 REMOTE_SCRIPT=${REMOTE_SCRIPT//__SHERMIN_IMAGE_TAG__/$SHERMIN_IMAGE_TAG}
 REMOTE_SCRIPT=${REMOTE_SCRIPT//__MAX_FILE_SIZE__/$MAX_FILE_SIZE}
-REMOTE_SCRIPT=${REMOTE_SCRIPT//__DOCKER_TAR_B64__/$DOCKER_TAR_B64}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__DOCKERFILE_B64__/$DOCKERFILE_B64}
 
 PARAMS_FILE=$(mktemp)
 trap 'rm -f "$PARAMS_FILE"' EXIT
