@@ -110,6 +110,18 @@ We build a derivative image `twenty-shermin:<upstream>-shermin1` from `twentycrm
 
 **Upstream-merge note:** when bumping to a new Twenty tag, the first deploy after may fail at the build assertion if the compiled output structure changed. Inspect the new dist file, regenerate the sed pattern, retry.
 
+### Stax brand CSS (v1 patch)
+
+The same `Dockerfile.shermin` that lifts the file-size cap also injects Stax brand styling into Twenty's compiled front-end. See [`v1-customisation.md`](v1-customisation.md#stax-branding) for the architecture.
+
+Mechanics:
+1. `shermin/infra/docker/shermin-overrides.css` — Stax slate blue scale (`--t-color-blue1..12`) and Stax pink scale (`--t-color-pink1..12`), plus surface tokens.
+2. Dockerfile.shermin copies it into `/app/packages/twenty-server/dist/front/shermin-overrides.css`.
+3. Dockerfile.shermin sed-injects `<link rel="stylesheet" href="/shermin-overrides.css" />` into `index.html` before `</head>`.
+4. Browser loads Twenty's compiled CSS, then our override (last-wins).
+
+Image tag bumped from `v2.1.0-shermin1` to `v2.1.0-shermin2` to force a docker compose recreate on deploy.
+
 ### S3 lifecycle (FCA retention)
 
 Aligned to FCA CONC retention requirements (6 years for credit records — we use 7 as a safety margin). Nothing is ever permanently deleted.
