@@ -4,12 +4,6 @@
  * This stylesheet is injected into Twenty's index.html AFTER Twenty's own
  * compiled CSS, so these rules override the upstream theme tokens.
  *
- * Strategy: replace Twenty's `blue` (indigo) scale with a Stax slate blue
- * scale and Twenty's `pink` scale with the documented Stax pink scale.
- * The accent the user picks in Settings -> Account -> Color Scheme then
- * gets the Stax palette. Default workspace accent is blue, which now
- * means Stax slate blue.
- *
  * Source brand colours:
  *   #477085  Stax slate blue (primary)
  *   #3b5f71  Stax slate blue hover
@@ -19,12 +13,50 @@
  *   #ffffff  Stax surface
  *   #333333  Stax body text
  *
- * Scales below were generated algorithmically (HSL lightness ramp) from
- * the brand hues. Step 9 of each scale matches the brand colour exactly.
+ * Twenty exposes two layers of colour tokens:
+ *   1. --t-accent-*    — the ACTIVE workspace accent (changes when the user
+ *                        picks a different scheme in Settings → Account →
+ *                        Color Scheme). This is what colours the primary
+ *                        action button, active sidebar item, focus ring,
+ *                        kanban "+New" button, etc.
+ *   2. --t-color-{name} and --t-color-{name}{n}  — the named-colour
+ *                        palettes (blue, red, green, pink, etc.). Used for
+ *                        coloured tags, statuses, kanban column headers,
+ *                        chart series.
+ *
+ * We override BOTH so Twenty looks Stax regardless of which accent the user
+ * picks (we map every accent index to the Stax slate blue scale), and the
+ * named blue + pink palettes are remapped to Stax brand for tags / kanban.
  */
 
 :root,
 .light {
+  /* ===== Active workspace accent — Stax slate blue scale ===== */
+  /* This is the most-used colour token. Driving primary buttons, focus rings,
+     active states, kanban "New" controls. Step 9 = Stax slate blue. */
+  --t-accent-primary: #477085;
+  --t-accent-secondary: #477085;
+  --t-accent-tertiary: #ccdae1;
+  --t-accent-quaternary: #e6edf1;
+  --t-accent-accent3570: #97b2bf;
+  --t-accent-accent4060: #97b2bf;
+  --t-accent-accent1: #f4f7f9;
+  --t-accent-accent2: #e6edf1;
+  --t-accent-accent3: #ccdae1;
+  --t-accent-accent4: #b1c5d0;
+  --t-accent-accent5: #97b2bf;
+  --t-accent-accent6: #7e9eaf;
+  --t-accent-accent7: #658a9e;
+  --t-accent-accent8: #4d778d;
+  --t-accent-accent9: #477085;   /* Stax slate blue (PRIMARY) */
+  --t-accent-accent10: #3b5f71;  /* Stax slate blue hover */
+  --t-accent-accent11: #2e4a59;
+  --t-accent-accent12: #1c2c35;
+
+  /* ===== Bare named accent — what 7 references in compiled CSS hit ===== */
+  --t-color-blue: #477085;
+  --t-color-pink: #d884b6;
+
   /* ===== Stax slate blue scale (overrides Twenty's blue/indigo) ===== */
   --t-color-blue1: #f4f7f9;
   --t-color-blue2: #e6edf1;
@@ -34,8 +66,8 @@
   --t-color-blue6: #7e9eaf;
   --t-color-blue7: #658a9e;
   --t-color-blue8: #4d778d;
-  --t-color-blue9: #477085;   /* Stax slate blue (PRIMARY BRAND) */
-  --t-color-blue10: #3b5f71;  /* Stax slate blue hover */
+  --t-color-blue9: #477085;
+  --t-color-blue10: #3b5f71;
   --t-color-blue11: #2e4a59;
   --t-color-blue12: #1c2c35;
 
@@ -48,19 +80,13 @@
   --t-color-pink6: #e58cbb;
   --t-color-pink7: #df76ae;
   --t-color-pink8: #db83b5;
-  --t-color-pink9: #d884b6;   /* Stax pink (ACCENT) */
-  --t-color-pink10: #c86fa4;  /* Stax pink hover */
+  --t-color-pink9: #d884b6;
+  --t-color-pink10: #c86fa4;
   --t-color-pink11: #a8567f;
   --t-color-pink12: #5a2a44;
-
-  /* ===== Stax surfaces ===== */
-  --t-color-gray0: #ffffff;
-  --t-color-gray1: #f5f7fa;
 }
 
-/* Browser UI integration */
-@media (prefers-color-scheme: light) {
-  meta[name="theme-color"] {
-    content: "#477085" !important;
-  }
+/* Browser theme-color (mobile address bar etc.) */
+meta[name="theme-color"] {
+  content: "#477085" !important;
 }
