@@ -39,35 +39,27 @@ Three roles, one access boundary:
 
 Visibility model: by default new users land on Member and cannot see Staff. Move someone to HR Admin (Settings → Members → assign role) to give them access. Admin sees everything.
 
-## Stax branding
+## Stax branding (v1 outcome: logo + workspace name only)
 
-Twenty's UI is Linaria CSS-in-JS with a generated CSS-variables file shipped in the front-end build. We don't fork the CSS; we inject an override.
+For v1 we ship light branding: Stax logo + "Stax CRM" workspace name. Twenty's default indigo accent stays. Full Stax slate blue + pink theming is **deferred to v2**.
 
-**Architecture:**
+### Why we didn't ship full theme override
 
-```
-shermin-overrides.css  (this repo, shermin/infra/docker/)
-        ↓
-Dockerfile.shermin copies it into the container at /app/.../dist/front/
-        ↓
-Dockerfile.shermin sed-injects <link rel="stylesheet" href="/shermin-overrides.css"/> into index.html, BEFORE </head>
-        ↓
-Browser loads index.html, then Twenty's compiled CSS, then OUR override (last-wins)
-        ↓
-Stax slate blue + pink palette
-```
+We tried two approaches in PR #4 and both fell short for v1:
 
-**What the override does:** replaces Twenty's `--t-color-blue*` (1–12) with a Stax slate blue scale (step 9 = `#477085`), and replaces `--t-color-pink*` with the documented Stax pink scale (step 9 = `#d884b6`). Surfaces (`gray0` = white, `gray1` = `#f5f7fa`) match the Stax design system.
+1. **CSS variable override.** Inject a stylesheet that overrides Twenty's `--t-accent-*` and `--t-color-blue*` scales. Verified loaded (DevTools confirmed `--t-accent-accent9: '#477085'` was the computed value). But Twenty's components don't actually consume those CSS variables — they read from a JS theme provider (emotion / styled-components context), which holds the colour values as JS literals baked at build time.
+2. **JS bundle sed-patch.** Identified the bundle containing the saturated indigo P3 string `color(display-p3 0.276 0.384 0.837)` and sed-replaced the full indigo scale with Stax slate blue P3 equivalents. Worked technically (verified the patch landed in the running container) but didn't produce a clean visual change in the UI — components seem to compute colours from multiple sources and the patch only caught one. It would also need re-validating on every upstream merge, with high false-confidence risk.
 
-**Verifying it's live:**
-```bash
-curl -ks https://<alb-dns>/shermin-overrides.css | head -5    # should return Stax CSS
-curl -ks https://<alb-dns>/ | grep shermin-overrides.css      # should show the injected <link>
-```
+### v2 path
 
-**When upstream changes the index.html template** (rare), the Dockerfile sed will fail loudly with `grep -q "</head>"` exiting non-zero. Inspect the new index, fix the sed, re-deploy.
+The proper fix is a **front-end source build**: clone `twentyhq/twenty`, edit `packages/twenty-ui/src/theme/constants/MainColorsLight.ts` and `AccentLight.ts` to use Stax brand colours, run `yarn nx build twenty-front`, ship a custom server image that bundles the patched front-end. Half-day to a day of work, robust against upstream changes (just resolve any merge conflicts in those two files).
 
-**When upstream renames CSS variables** (more likely over time), our override stops working but doesn't error. Visual check on every upstream bump — confirm the Stax blue is still the primary action colour.
+Reasonable trigger to do this: external user demos, or v2 readiness review.
+
+### What's in the repo for branding now
+
+- `Dockerfile.shermin` — only patches `maxFileSize` (the file-upload cap). No CSS injection, no JS theme patching.
+- Logo upload via UI: Settings → General → Logo. Use `~/path-to/stax-training-platform/public/brand/stax-logo.svg`.
 
 ## Reproducing v1 from scratch
 

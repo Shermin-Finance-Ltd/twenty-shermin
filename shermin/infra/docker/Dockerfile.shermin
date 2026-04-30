@@ -16,6 +16,16 @@
 #
 # Eventually we should upstream a STORAGE_MAX_FILE_SIZE env-var override and
 # delete this Dockerfile.
+#
+# v1 NOTE on branding:
+#   We attempted CSS-variable overrides + JS-bundle sed-patching to apply Stax
+#   slate blue + pink throughout the UI. CSS variable overrides DID load
+#   correctly (verified via DevTools) but Twenty's components don't consume
+#   them — they read from a JS theme provider (emotion / styled-components).
+#   JS-bundle patching worked but was too brittle for v1 (breaks on every
+#   upstream merge, requires per-version re-validation). Reverted to "logo +
+#   workspace name" branding only. Full theme override is a v2 task that
+#   needs a proper front-end source build, not a sed-patch.
 
 ARG TWENTY_TAG=v2.1.0
 FROM twentycrm/twenty:${TWENTY_TAG}
@@ -25,7 +35,7 @@ FROM twentycrm/twenty:${TWENTY_TAG}
 ARG TWENTY_TAG
 ARG MAX_FILE_SIZE=100MB
 
-# Patch the compiled settings constant.
+# Patch the compiled settings constant for upload size.
 RUN set -eux; \
     SETTINGS_FILE=/app/packages/twenty-server/dist/engine/constants/settings/index.js; \
     test -f "$SETTINGS_FILE"; \
@@ -34,23 +44,6 @@ RUN set -eux; \
     grep -q "maxFileSize: '${MAX_FILE_SIZE}'" "$SETTINGS_FILE"; \
     echo "Patched maxFileSize to ${MAX_FILE_SIZE}"
 
-# Stax brand override CSS — replaces Twenty's blue (indigo) and pink scales
-# with Stax slate blue and Stax pink. Loaded by index.html AFTER Twenty's
-# own compiled CSS so it wins by source order.
-COPY shermin-overrides.css /app/packages/twenty-server/dist/front/shermin-overrides.css
-
-# Inject <link> into index.html so the override loads on every page request.
-# Verified via grep that the injection actually happened — fails the build if
-# upstream changes the index.html structure under us.
-RUN set -eux; \
-    INDEX=/app/packages/twenty-server/dist/front/index.html; \
-    test -f "$INDEX"; \
-    grep -q "</head>" "$INDEX"; \
-    sed -i 's|</head>|<link rel="stylesheet" href="/shermin-overrides.css" data-shermin="true" />\n</head>|' "$INDEX"; \
-    grep -q "shermin-overrides.css" "$INDEX"; \
-    echo "Injected shermin-overrides.css link"
-
 LABEL org.shermin.fork="twenty-shermin"
 LABEL org.shermin.upstream-tag="${TWENTY_TAG}"
 LABEL org.shermin.max-file-size="${MAX_FILE_SIZE}"
-LABEL org.shermin.brand="stax-slate-blue-pink"
