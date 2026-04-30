@@ -84,14 +84,37 @@ TWENTY_API_KEY=<paste-key> ../scripts/setup-shermin-crm.sh
 
 Steps 1–2 are infrastructure + image. Step 5 is workspace-internal data model + roles.
 
-## Things you do in the UI (not scripted)
+## What's automated vs UI-only
 
-The setup script doesn't (yet) configure these because they're either trivial in the UI or require a workflow-version API the script avoids:
+The setup script handles 95% of v1 configuration. There's one thing it can't do because Twenty's API gates it to user-session auth, and one thing that's a per-user choice.
 
-- **Logo upload.** Settings → General → Logo — drop the Stax PNG/SVG.
-- **Default Kanban views.** On Retailers list page, click the view dropdown → New view → Kanban → group by `prospectingStage`. Save as workspace view "Prospecting". Repeat with `onboardingStage` filtered to `prospectingStage = Converted`, save as "Onboarding".
-- **Conversion workflow.** Settings → Workflows → New → trigger: `Record updated on Retailer` where `prospectingStage` field changed → action: Update Record → set `onboardingStage = File Collection`. Activate.
-- **Assign HR Admin role.** Settings → Members → Edit your own role → HR Admin. Add other people (Tony, Gemma, Gareth) as needed.
+### Automated by `setup-shermin-crm.sh`
+
+- Companies → Retailers, People → Contacts label rename
+- Adding `prospectingStage` and `onboardingStage` SELECT fields to Retailer
+- Creating Staff custom object + 19 fields
+- Creating HR Admin role + denying Member access to Staff
+- Creating Prospecting + Onboarding Kanban views (workspace-visible)
+- Creating the conversion workflow shell (in DRAFT)
+- Uploading the Stax logo (if `STAX_LOGO` env var or default path resolves)
+
+### Must be done in the UI
+
+**1. Conversion workflow content** (3 minutes)
+
+Twenty's `WorkflowVersionStepResolver` is gated by `UserAuthGuard`, not accessible to API keys. The shell exists in DRAFT — you fill in the trigger + steps in the UI:
+
+1. Settings → Workflows → click "Auto-advance retailer to onboarding when converted"
+2. **Add trigger**: type `Record is created or updated`, object `Retailer`, watch fields → tick `Prospecting Stage` only
+3. **Add a Filter step**: condition → `{{trigger.properties.after.prospectingStage}}` IS `CONVERTED`
+4. **Add an Update Record step**: object `Retailer`, record id `{{trigger.properties.after.id}}`, set field `Onboarding Stage` = `File Collection`
+5. Click **Activate**
+
+After this, when any user moves a retailer to `prospectingStage = Converted` in the Prospecting kanban, the same retailer auto-appears in the File Collection column of the Onboarding kanban.
+
+**2. Assign HR Admin role to specific people**
+
+Settings → Members → click member → role → HR Admin. Repeat for each person who should see Staff records (Tony, Gemma, Gareth — whoever you decide).
 
 ## Setup-script reference
 
@@ -101,18 +124,17 @@ The script is **idempotent**: re-runs detect existing state and skip cleanly. Sa
 TWENTY_API_KEY=<key> shermin/infra/scripts/setup-shermin-crm.sh
 ```
 
-What it does (in order, with idempotent skip-if-exists):
+What it does (7 steps, all idempotent):
 1. Patches `Company` object label → "Retailer" / "Retailers", icon `IconBuildingStore`.
 2. Patches `Person` object label → "Contact" / "Contacts", icon `IconUserCircle`.
-3. Adds `prospectingStage` and `onboardingStage` SELECT fields to Retailer.
-4. Creates `staffMember` custom object with 19 fields.
-5. Creates `HR Admin` role.
-6. Upserts `staffMember` permissions on Member role to deny read/edit/destroy.
+3. Adds `prospectingStage` and `onboardingStage` SELECT fields to Retailer; creates `staffMember` custom object + 19 fields.
+4. Creates `HR Admin` role; denies Member role access to Staff.
+5. Configures default Kanban views (Prospecting + Onboarding) on Retailers.
+6. Creates workflow shell `Auto-advance retailer to onboarding when converted` in DRAFT.
+7. Uploads Stax logo via `uploadWorkspaceLogo` multipart mutation.
 
-What the script avoids:
-- Workflow creation (Twenty's `workflowVersion` API is awkward; UI is faster).
-- View creation (per-user view state, scriptable but high churn).
-- Logo upload (single drag-and-drop in UI, not worth scripting).
+What the script CAN'T do (Twenty API limitations):
+- Workflow trigger + step content. `WorkflowVersionStepResolver` requires `UserAuthGuard` (browser session), not accessible to API keys. The shell sits in DRAFT for the user to complete in UI.
 
 ## Files in this v1 PR
 
