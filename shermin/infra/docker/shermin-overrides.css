@@ -86,7 +86,31 @@
   --t-color-pink12: #5a2a44;
 }
 
+/* ===== Diagnostic markers — remove once branding is confirmed visible ===== */
+/* If you see a 4px Stax slate blue border at the top of the page, the
+   override CSS is loading. If you don't, the CSS is being blocked or cached. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: #477085;
+  z-index: 999999;
+}
+
 /* Browser theme-color (mobile address bar etc.) */
 meta[name="theme-color"] {
   content: "#477085" !important;
+}
+
+/* ===== Aggressive overrides with !important to defeat specificity ===== */
+:root,
+.light {
+  --t-accent-primary: #477085 !important;
+  --t-accent-secondary: #477085 !important;
+  --t-accent-accent9: #477085 !important;
+  --t-accent-accent10: #3b5f71 !important;
+  --t-color-blue: #477085 !important;
+  --t-color-blue9: #477085 !important;
+  --t-color-blue10: #3b5f71 !important;
 }

@@ -26,7 +26,7 @@ TWENTY_TAG=$(terraform output -json | jq -r '.twenty_image_tag.value // "v2.1.0"
 # Shermin image config — derived image with maxFileSize lift + Stax brand CSS.
 # Bump the suffix when changing the Dockerfile or override CSS so docker compose
 # recreates containers (rather than reusing the cached old image).
-SHERMIN_IMAGE_TAG="${TWENTY_TAG}-shermin3"
+SHERMIN_IMAGE_TAG="${TWENTY_TAG}-shermin5"
 MAX_FILE_SIZE="${MAX_FILE_SIZE:-100MB}"
 
 # Encode the Dockerfile + shermin-overrides.css so we can transmit them inside
