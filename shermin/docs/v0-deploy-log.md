@@ -77,6 +77,43 @@ Fix for v0: `NODE_TLS_REJECT_UNAUTHORIZED=0` on both `server` and `worker` conta
 
 After fixes, deploy completed in 23×5s = ~2 minutes. ALB target took another ~60s to flip to healthy after Twenty came up (2 consecutive checks at 30s intervals). End-to-end HTTPS through the ALB returns 200 on `/healthz`. Self-signed cert warning in browser, click-through expected.
 
+## Storage configuration
+
+### File attachments (where they live)
+
+Files attached to Twenty records — Companies, People, Notes — go to S3 bucket `twenty-shermin-v0-attachments-992914515467` under `<workspace-uuid>/<file-uuid>/<filename>`. Configured at deploy time via the `STORAGE_TYPE=s3` family of env vars. Versioning on, SSE-S3 encryption.
+
+**Custom objects don't get native attachments in Twenty v2.1.0.** When we build the `Retailer` custom object in Phase 1, we attach contract / compliance / KYC documents as `Note` records related to the Retailer. Note is a standard Twenty object with full attachment support. See [`data-model.md`](data-model.md) for the spec.
+
+### 100 MB upload cap
+
+Twenty's upstream image hardcodes a 10 MB per-file upload cap in `packages/twenty-server/src/engine/constants/settings/index.ts:maxFileSize`. No env-var override exists upstream. Most contract / FCA / KYC PDFs sit between 5 and 30 MB, so 10 MB is too tight.
+
+We build a derivative image `twenty-shermin:<upstream>-shermin1` from `twentycrm/twenty:<upstream>` that sed-patches the compiled constant on build:
+
+- Dockerfile: [`shermin/infra/docker/Dockerfile.shermin`](../infra/docker/Dockerfile.shermin)
+- Build trigger: every run of [`shermin/infra/scripts/deploy-twenty.sh`](../infra/scripts/deploy-twenty.sh) builds the image on the EC2 itself (no registry needed) before `docker compose up`.
+- Build-arg: `MAX_FILE_SIZE` (default 100MB). Override via `MAX_FILE_SIZE=250MB ./deploy-twenty.sh`.
+- Verification: the build asserts that the substitution actually happened (greps for the new value after sed). If a future Twenty version restructures the compiled constant, the build fails loudly rather than silently shipping a 10 MB cap.
+
+**v1 work:** submit an upstream PR adding `STORAGE_MAX_FILE_SIZE` env var to Twenty. When merged, drop our Dockerfile.
+
+**Upstream-merge note:** when bumping to a new Twenty tag, the first deploy after may fail at the build assertion if the compiled output structure changed. Inspect the new dist file, regenerate the sed pattern, retry.
+
+### S3 lifecycle (FCA retention)
+
+Aligned to FCA CONC retention requirements (6 years for credit records — we use 7 as a safety margin). Nothing is ever permanently deleted.
+
+| Layer | Path |
+|---|---|
+| Current versions | Standard → GIR after 90 days → Deep Archive after 7 years |
+| Non-current versions | Standard → GIR after 30 days → Deep Archive after 7 years |
+| Incomplete multipart uploads | Aborted after 7 days (housekeeping only) |
+
+Cost impact at expected v1 volumes (~25 GiB total): negligible. Without the GIR transitions, S3 Standard would charge ~£0.45/month. With them, that drops to ~£0.30/month over time. The win isn't cost — it's that we explicitly don't lose anything.
+
+If the GIR / Deep Archive scheme proves wrong (e.g. compliance asks for hot-tier retention longer), the lifecycle is one Terraform edit + apply away.
+
 ## Cost
 
 About £77/month while running. `terraform destroy` at any time to stop the meter.

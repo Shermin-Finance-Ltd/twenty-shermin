@@ -36,10 +36,39 @@ resource "aws_s3_bucket_versioning" "attachments" {
 resource "aws_s3_bucket_lifecycle_configuration" "attachments" {
   bucket = aws_s3_bucket.attachments.id
 
-  rule {
-    id     = "expire-old-versions"
-    status = "Enabled"
+  # Tiered retention aligned to FCA rules (CONC requires 6 years for credit
+  # records — we use 7 as a safety margin, then keep them forever in cheaper
+  # storage rather than ever permanently deleting anything).
+  #
+  # Current versions:
+  #   - 0–90 days:  S3 Standard            (active access, fast)
+  #   - 90 d–7 yr:  Glacier Instant Retrieval (instant ms retrieval, ~30% cheaper)
+  #   - 7 yr+:      Glacier Deep Archive   (12h retrieval, ~95% cheaper than Standard)
+  # Non-current versions (overwritten / replaced files):
+  #   - 0–30 days:  Standard               (recent overwrites are easiest to hit)
+  #   - 30 d–7 yr:  Glacier Instant Retrieval
+  #   - 7 yr+:      Glacier Deep Archive
+  # Nothing is ever expired or deleted.
 
+  rule {
+    id     = "tiered-retention-current-versions"
+    status = "Enabled"
+    filter {}
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER_IR"
+    }
+
+    transition {
+      days          = 2555 # ~7 years
+      storage_class = "DEEP_ARCHIVE"
+    }
+  }
+
+  rule {
+    id     = "tiered-retention-noncurrent-versions"
+    status = "Enabled"
     filter {}
 
     noncurrent_version_transition {
@@ -47,8 +76,22 @@ resource "aws_s3_bucket_lifecycle_configuration" "attachments" {
       storage_class   = "GLACIER_IR"
     }
 
-    noncurrent_version_expiration {
-      noncurrent_days = 365
+    noncurrent_version_transition {
+      noncurrent_days = 2555 # ~7 years
+      storage_class   = "DEEP_ARCHIVE"
+    }
+
+    # No noncurrent_version_expiration — files are never deleted.
+  }
+
+  # Clean up incomplete multipart uploads (purely housekeeping, not retention).
+  rule {
+    id     = "abort-incomplete-multipart"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }

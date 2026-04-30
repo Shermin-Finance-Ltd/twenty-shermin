@@ -23,11 +23,20 @@ SECRET_DB=$(terraform output -raw secret_arn_db)
 SECRET_APP=$(terraform output -raw secret_arn_twenty_app_secret)
 TWENTY_TAG=$(terraform output -json | jq -r '.twenty_image_tag.value // "v2.1.0"' 2>/dev/null || echo "v2.1.0")
 
-echo "EC2:        $EC2_ID"
-echo "ALB DNS:    $ALB_DNS"
-echo "RDS:        $RDS_ENDPOINT:$RDS_PORT"
-echo "S3:         $S3_BUCKET"
-echo "Twenty tag: $TWENTY_TAG"
+# Shermin image config — derives a custom image with maxFileSize lifted to 100MB
+SHERMIN_IMAGE_TAG="${TWENTY_TAG}-shermin1"
+MAX_FILE_SIZE="${MAX_FILE_SIZE:-100MB}"
+
+# Encode the Dockerfile so we can transmit it inside the SSM payload
+DOCKERFILE_PATH="$(dirname "$0")/../docker/Dockerfile.shermin"
+DOCKERFILE_B64=$(base64 < "$DOCKERFILE_PATH" | tr -d '\n')
+
+echo "EC2:           $EC2_ID"
+echo "ALB DNS:       $ALB_DNS"
+echo "RDS:           $RDS_ENDPOINT:$RDS_PORT"
+echo "S3:            $S3_BUCKET"
+echo "Upstream tag:  $TWENTY_TAG"
+echo "Shermin image: twenty-shermin:$SHERMIN_IMAGE_TAG (max file size $MAX_FILE_SIZE)"
 echo ""
 
 REMOTE_SCRIPT=$(cat <<'REMOTE_EOF'
@@ -42,8 +51,25 @@ S3_BUCKET="__S3_BUCKET__"
 SECRET_DB_ARN="__SECRET_DB__"
 SECRET_APP_ARN="__SECRET_APP__"
 TWENTY_TAG="__TWENTY_TAG__"
+SHERMIN_IMAGE_TAG="__SHERMIN_IMAGE_TAG__"
+MAX_FILE_SIZE="__MAX_FILE_SIZE__"
+DOCKERFILE_B64="__DOCKERFILE_B64__"
 
 cd /opt/twenty
+
+echo "[deploy] writing Dockerfile.shermin"
+mkdir -p /opt/twenty/docker
+echo "$DOCKERFILE_B64" | base64 -d > /opt/twenty/docker/Dockerfile.shermin
+
+echo "[deploy] building patched Twenty image (twenty-shermin:$SHERMIN_IMAGE_TAG)"
+# Pull upstream first so docker build can use it as the FROM
+docker pull "twentycrm/twenty:$TWENTY_TAG"
+docker build \
+  --build-arg "TWENTY_TAG=$TWENTY_TAG" \
+  --build-arg "MAX_FILE_SIZE=$MAX_FILE_SIZE" \
+  -t "twenty-shermin:$SHERMIN_IMAGE_TAG" \
+  -f /opt/twenty/docker/Dockerfile.shermin \
+  /opt/twenty/docker
 
 echo "[deploy] fetching secrets"
 DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "$SECRET_DB_ARN" --region "$REGION" --query SecretString --output text)
@@ -53,6 +79,7 @@ echo "[deploy] writing .env"
 umask 077
 cat > /opt/twenty/.env <<ENV_EOF
 TAG=$TWENTY_TAG
+SHERMIN_IMAGE_TAG=$SHERMIN_IMAGE_TAG
 SERVER_URL=https://$ALB_DNS
 PG_DATABASE_HOST=$RDS_ENDPOINT
 PG_DATABASE_PORT=$RDS_PORT
@@ -71,7 +98,8 @@ name: twenty
 
 services:
   server:
-    image: twentycrm/twenty:${TAG}
+    image: twenty-shermin:${SHERMIN_IMAGE_TAG}
+    pull_policy: never
     volumes:
       - server-local-data:/app/packages/twenty-server/.local-storage
     ports:
@@ -100,7 +128,8 @@ services:
     restart: always
 
   worker:
-    image: twentycrm/twenty:${TAG}
+    image: twenty-shermin:${SHERMIN_IMAGE_TAG}
+    pull_policy: never
     volumes:
       - server-local-data:/app/packages/twenty-server/.local-storage
     command: ["yarn", "worker:prod"]
@@ -141,9 +170,9 @@ COMPOSE_EOF
 
 chown -R ec2-user:ec2-user /opt/twenty
 
-echo "[deploy] pulling images"
+echo "[deploy] pulling redis (server/worker use locally-built image)"
 cd /opt/twenty
-docker compose pull
+docker compose pull redis
 
 echo "[deploy] starting stack"
 docker compose up -d
@@ -174,6 +203,9 @@ REMOTE_SCRIPT=${REMOTE_SCRIPT//__S3_BUCKET__/$S3_BUCKET}
 REMOTE_SCRIPT=${REMOTE_SCRIPT//__SECRET_DB__/$SECRET_DB}
 REMOTE_SCRIPT=${REMOTE_SCRIPT//__SECRET_APP__/$SECRET_APP}
 REMOTE_SCRIPT=${REMOTE_SCRIPT//__TWENTY_TAG__/$TWENTY_TAG}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__SHERMIN_IMAGE_TAG__/$SHERMIN_IMAGE_TAG}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__MAX_FILE_SIZE__/$MAX_FILE_SIZE}
+REMOTE_SCRIPT=${REMOTE_SCRIPT//__DOCKERFILE_B64__/$DOCKERFILE_B64}
 
 PARAMS_FILE=$(mktemp)
 trap 'rm -f "$PARAMS_FILE"' EXIT
