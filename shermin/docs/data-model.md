@@ -41,7 +41,8 @@ All apiNames are snake_case (Twenty convention). Twenty auto-generates `id` (UUI
 | Compliance outcome | `complianceOutcome` | Select | No | Result of compliance review. | Values: `Pass`, `Fail`, `Waived`. Hidden from BDMs. Required to leave Compliance check stage. |
 | Compliance notes | `complianceNotes` | Text | No | Long-form rationale, evidence references, conditions. | Hidden from BDMs. Multiline. |
 | Contract signed date | `contractSignedDate` | Date | No | Date the broker agreement was countersigned. | Required to leave Contract stage. |
-| Contract document | `contractDoc` | Link | No | URL to the signed contract in document storage. | Twenty Apps don't yet expose a first-class file field for custom objects on v2.1.0; using Link to an external object store (S3 / DocuSign envelope URL) until the Files API is GA. See open question. |
+| Documents | `documents` | Files | No | All retailer documents — signed contract, FCA evidence, KYC docs, financial statements. Multi-file field, drops directly into the record view. | Twenty 2.1+ supports the `FILES` field type on custom objects. Files land in the Twenty attachment store (S3 in our v0). Per-file cap 100 MB after our build patch. See [v0-deploy-log.md](v0-deploy-log.md#100-mb-upload-cap). |
+| External envelope | `externalEnvelopeUrl` | Link | No | DocuSign envelope URL or other externally-hosted contract reference. | Optional; use only when the signed contract is hosted outside Twenty (DocuSign-only workflows). For docs hosted in Twenty, use `documents` above. |
 | Salesforce Account ID | `salesforceAccountId` | Text | No | Salesforce 18-character Account ID, written back after first successful push. | Read-only in UI. Set by webhook handler. |
 | Salesforce Contact ID (primary) | `salesforceContactId` | Text | No | Salesforce 18-character Contact ID for the primary contact pushed alongside the Account. | Read-only in UI. |
 | CRM external id | `crmExternalId` | UUID | Yes | Stable external identifier used as the upsert key in Salesforce (`CRM_External_Id__c`). | Auto-generated on create. Immutable. Unique. Index. |
@@ -127,7 +128,7 @@ We rely on Twenty's built-in objects rather than recreating them:
 
 - **`person`** — every individual we deal with (retailer directors, compliance officers, internal staff). Linked to `retailer` via `retailer_contact`. We do not currently extend the standard person fields; if we need retailer-specific attributes (e.g. role) they go on `retailer_contact`.
 - **`company`** — NOT used as the retailer record. We chose a custom `retailer` object instead because the sales-funnel semantics (pipeline_stage, compliance_outcome, SF sync metadata) clutter `company` and would conflict with Twenty's intended use of company as a generic CRM company. `company` remains available for non-retailer organisations (e.g. lender references, group parents) but is not central to the workflow.
-- **`note`** — attached to `retailer` for free-form notes (call notes, ad-hoc context). Standard Twenty notes UI is good enough; no custom fields needed.
+- **`note`** — attached to `retailer` for free-form notes (call notes, ad-hoc context). Notes can also carry their own attachments if a user prefers that surface, but the canonical place for retailer documents is the `documents` Files field on the `retailer` object itself.
 - **`task`** — attached to `retailer` for follow-ups, callbacks, document chases. Standard Twenty due-date and assignee fields cover what BDMs need at v1. Trello-style stage checklists are deferred to v2 (see plan); when we build them we will likely add a `stage` Select on `task` to scope tasks to a pipeline stage.
 - **`workspaceMember`** — Twenty's user object. Targeted by all `assigned*` and `*By` relations on `retailer`.
 
@@ -135,7 +136,7 @@ We rely on Twenty's built-in objects rather than recreating them:
 
 ## Open questions for Barney
 
-1. **Contract document storage.** Twenty v2.1.0 doesn't expose a first-class file/attachment field on custom objects via the public API. We've spec'd `contractDoc` as a `Link` to an external store (S3 bucket, or the DocuSign envelope URL). Acceptable for v1, or do you want to wait for the Twenty Files API and accept a later schema migration?
+1. **Contract document storage — settled.** Twenty 2.1+ supports the `FILES` field type on custom objects (verified in source: `FieldMetadataType.FILES` in `packages/twenty-shared/src/types/FieldMetadataType.ts`, no whitelist excluding custom objects). We use a `documents: Files` field on `retailer` for inline document storage, plus an optional `externalEnvelopeUrl: Link` for DocuSign-hosted contracts. v0 image patched to 100 MB per file.
 2. **`tradingName` vs `legalName` as display label.** Twenty uses one field as the record label in tables and dropdowns. BDMs talk in trading names; compliance and contracts use legal names. Spec'd `legalName` because it's the FCA-true identity and avoids ambiguity; do you want trading name front-and-centre instead, with legal name as a secondary field?
 3. **`expectedMonthlyVolume` precision.** Currency type stores 2dp. Confirm GBP-only, or do we need to support EUR / multi-currency now to avoid a migration when Shermin expands?
 4. **`previousStage` field.** Added to support the revert-after-update workflow pattern. It's an implementation detail that pollutes the schema. Alternative: store previous stage in workflow context or in `integration_log`. Happy with it on the object, or prefer it hidden / on a side table?

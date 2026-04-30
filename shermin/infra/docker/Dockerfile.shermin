@@ -1,0 +1,39 @@
+# Shermin's Twenty image — derived from upstream with the per-file upload
+# limit lifted from 10 MB to a configurable build-arg default.
+#
+# The constant lives in:
+#   /app/packages/twenty-server/dist/engine/constants/settings/index.js
+# at line 24:
+#   maxFileSize: '10MB'
+#
+# We sed-patch the compiled output. This is fragile in principle (compiled JS
+# can change shape between releases), so the build verifies the substitution
+# actually happened before declaring success — if upstream renames or restructures
+# the constant, the build fails loudly rather than silently shipping a 10 MB cap.
+#
+# When we bump the upstream tag, re-test this build. If sed misses, regenerate
+# the patch by inspecting the new dist file.
+#
+# Eventually we should upstream a STORAGE_MAX_FILE_SIZE env-var override and
+# delete this Dockerfile.
+
+ARG TWENTY_TAG=v2.1.0
+FROM twentycrm/twenty:${TWENTY_TAG}
+
+# ARGs declared before FROM are only visible in FROM; redeclare for use in
+# later instructions (RUN, LABEL).
+ARG TWENTY_TAG
+ARG MAX_FILE_SIZE=100MB
+
+# Patch the compiled settings constant.
+RUN set -eux; \
+    SETTINGS_FILE=/app/packages/twenty-server/dist/engine/constants/settings/index.js; \
+    test -f "$SETTINGS_FILE"; \
+    grep -q "maxFileSize: '10MB'" "$SETTINGS_FILE"; \
+    sed -i "s/maxFileSize: '10MB'/maxFileSize: '${MAX_FILE_SIZE}'/" "$SETTINGS_FILE"; \
+    grep -q "maxFileSize: '${MAX_FILE_SIZE}'" "$SETTINGS_FILE"; \
+    echo "Patched maxFileSize to ${MAX_FILE_SIZE}"
+
+LABEL org.shermin.fork="twenty-shermin"
+LABEL org.shermin.upstream-tag="${TWENTY_TAG}"
+LABEL org.shermin.max-file-size="${MAX_FILE_SIZE}"

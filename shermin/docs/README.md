@@ -1,12 +1,23 @@
 # Shermin CRM — docs index
 
-Phase 0 discovery is in progress. Docs marked **(in progress)** are being drafted by parallel agents and will be filled in as they complete.
+## Status
+
+**Phase 1 — v0 live.** Twenty CRM is running in the dev AWS account. See [`v0-deploy-log.md`](v0-deploy-log.md) for the chronological story.
 
 ## Plan & decisions
 
 - The approved v1 plan lives outside the repo (Barney's local plans dir). The headline decisions are summarised in [`SHERMIN.md`](../../SHERMIN.md).
 
-## Phase 0 — Discovery (in progress)
+## Phase 1 — v0 deploy
+
+| Doc | Status |
+|---|---|
+| [v0-deploy-log.md](v0-deploy-log.md) | done — what's running in dev, gotchas hit, repro steps, v1 fix list |
+| [../infra/README.md](../infra/README.md) | done — operational quick-reference for the live infra |
+| [../infra/terraform/v0/README.md](../infra/terraform/v0/README.md) | done — Terraform module overview, prerequisites, apply / destroy commands |
+| [../infra/scripts/README.md](../infra/scripts/README.md) | done — `deploy-twenty.sh` runbook |
+
+## Phase 0 — Discovery (complete)
 
 | Doc | Status | Owner |
 |---|---|---|

@@ -106,6 +106,38 @@ EOF
 - If green, merge with squash to keep `main` history clean.
 - Tag the merge commit: `git tag -a "shermin-on-$TARGET" -m "Shermin fork on Twenty $TARGET"` and push.
 
+### 7. Recheck capability assumptions
+
+Twenty is a fast-moving project. Capabilities our data model relies on may change between minor versions in either direction (added, removed, renamed). On every upgrade, recheck:
+
+- **`FILES` field type on custom objects** — currently used for `retailer.documents`. Verify it's still registered in `packages/twenty-shared/src/types/FieldMetadataType.ts` and not gated behind a feature flag.
+- **`AttachmentWorkspaceEntity.custom` relation** — currently the side-panel Files surface for custom objects. Verify this relation still exists in `packages/twenty-server/src/modules/attachment/standard-objects/attachment.workspace-entity.ts`.
+- **Workflow trigger types** — when we build the stage-validation workflow, we depend on `recordCreated` / `recordUpdated` triggers existing.
+- **Apps SDK contract** — our App package's API surface. Breaking changes here block the Shermin App.
+
+If any of the above changes incompatibly, fix the dependency before merging upstream — don't merge then chase.
+
+### 8. Test the Shermin Docker image build
+
+We build a derivative image (`shermin/infra/docker/Dockerfile.shermin`) that sed-patches the compiled `maxFileSize` constant from `'10MB'` to `'100MB'`. The Dockerfile asserts the substitution actually happened, so if upstream restructures the compiled output, the deploy build will fail loudly.
+
+After a tag bump, in the staging environment:
+
+```bash
+AWS_PROFILE=shermin-dev shermin/infra/scripts/deploy-twenty.sh
+```
+
+Watch the build output. If you see `grep` failing or `Patched maxFileSize to 100MB` missing:
+
+1. SSH into the EC2: `aws ssm start-session --target $(terraform output -raw ec2_instance_id) --profile shermin-dev`
+2. Pull the new upstream image and inspect:
+   ```
+   docker pull twentycrm/twenty:<new-tag>
+   docker run --rm -it twentycrm/twenty:<new-tag> grep -n maxFileSize /app/packages/twenty-server/dist/engine/constants/settings/index.js
+   ```
+3. Update the sed pattern in `Dockerfile.shermin` to match.
+4. Re-run the deploy.
+
 ## When the merge is too painful
 
 If a single upstream bump becomes >2 hours of conflict resolution, stop and reassess:

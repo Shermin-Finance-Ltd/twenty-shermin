@@ -32,9 +32,27 @@ Upstream files we never modify:
 
 ## Status
 
-**Phase 0 — Discovery.** Four parallel workstreams producing committed documentation before any AWS spend or build.
+**Phase 1 — v0 deploy live.** Vanilla Twenty CRM running in the Shermin dev AWS account, single user (Barney), no Salesforce integration yet.
 
-See [shermin/docs/README.md](shermin/docs/README.md) for the discovery index.
+- **URL:** `https://twenty-shermin-v0-alb-2090009733.eu-west-2.elb.amazonaws.com` (self-signed cert, click through warning)
+- **Workspace name:** Stax CRM
+- **Cost:** ~£77/month while running
+
+Phase 0 discovery docs are merged on `main` under [`shermin/docs/`](shermin/docs/).
+Phase 1 v0 deploy story lives in [`shermin/docs/v0-deploy-log.md`](shermin/docs/v0-deploy-log.md).
+Operational quick-reference in [`shermin/infra/README.md`](shermin/infra/README.md).
+
+## Common operations
+
+| What | How |
+|---|---|
+| Open Twenty | Visit the URL above, accept self-signed cert |
+| SSO login | `aws sso login --profile shermin-dev` |
+| Re-deploy Twenty | `AWS_PROFILE=shermin-dev shermin/infra/scripts/deploy-twenty.sh` |
+| Tail Twenty logs | `aws logs tail /twenty-shermin-v0 --follow --profile shermin-dev` |
+| Shell into the EC2 | `aws ssm start-session --target $(cd shermin/infra/terraform/v0 && terraform output -raw ec2_instance_id) --profile shermin-dev` |
+| Stop the £77/month meter | `cd shermin/infra/terraform/v0 && terraform destroy -var-file=env/dev/dev.tfvars` |
+| Restart it | `terraform apply -var-file=env/dev/dev.tfvars` then `./shermin/infra/scripts/deploy-twenty.sh` |
 
 ## Upstream tracking
 

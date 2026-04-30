@@ -1,0 +1,23 @@
+# Terraform working directory — providers, modules, downloaded state cache
+.terraform/
+
+# Plan outputs — binary, may contain sensitive data
+*.tfplan
+*.tfplan.*
+
+# Crash log
+crash.log
+crash.*.log
+
+# Override files — environment-specific local overrides not intended for VCS
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Lock file IS committed (pins provider hashes for reproducibility)
+!.terraform.lock.hcl
