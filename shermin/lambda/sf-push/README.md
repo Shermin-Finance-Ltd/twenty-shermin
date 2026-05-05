@@ -1,69 +1,51 @@
 # sf-push Lambda
 
-Salesforce push pipeline. Receives a webhook from Twenty when a `Retailer` reaches the "Setup in Stax" stage, and upserts the corresponding Account + Contact in Salesforce.
+Twenty CRM → Salesforce integration. **Phase 2a scope: connection only** — proves auth round-trip works by describing Account + Contact. Write logic comes in Phase 2b/2c.
 
-Phase 1 deliverable — populated after Phase 0 discovery completes the Salesforce field-mapping and sandbox audit.
+## Auth pattern
 
-## Architecture
+We never load the JWT secret directly. We invoke the existing shared `lambda-sf-auth-{env}` Lambda which lives in the same AWS account and is shared across `polling`, `lender-webhooks`, `ecommerce`. It returns `{access_token, instance_url, expires_at}`. Same pattern as the rest of the org.
 
-```
-Twenty webhook
-    ↓
-API Gateway endpoint (HMAC-validated)
-    ↓
-Receiver Lambda (validates signature, returns 202)
-    ↓
-SQS queue (14-day retention)
-    ↓
-Worker Lambda (consumes SQS, calls SF Composite API)
-    ↓ on 5x retry failure
-DLQ + CloudWatch alarm → SNS email
+## Local test (after deploy)
+
+```bash
+aws lambda invoke \
+  --function-name twenty-crm-sf-push-dev \
+  --payload '{"action":"describe","sobjects":["Account","Contact"]}' \
+  --cli-binary-format raw-in-base64-out \
+  --profile shermin-dev \
+  /tmp/out.json && cat /tmp/out.json | python3 -m json.tool | head -50
 ```
 
-## Auth flow
+Expected output (truncated):
 
-OAuth 2.0 JWT Bearer Flow:
-- Private key in AWS Secrets Manager (never on disk).
-- Sign JWT with `iss = client_id`, `sub = integration user`, `aud = https://login.salesforce.com`, `exp = +3 min`.
-- POST to `/services/oauth2/token` with `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`.
-- Cache access token ~30 minutes.
-
-## Composite request (idempotent upsert)
-
-```
-POST /services/data/v60.0/composite
+```json
 {
-  "allOrNone": true,
-  "compositeRequest": [
-    {
-      "method": "PATCH",
-      "url": "/services/data/v60.0/sobjects/Account/CRM_External_Id__c/{retailer_uuid}",
-      "referenceId": "AccountUpsert",
-      "body": { ... }
-    },
-    {
-      "method": "PATCH",
-      "url": "/services/data/v60.0/sobjects/Contact/CRM_External_Id__c/{contact_uuid}",
-      "referenceId": "ContactUpsert",
-      "body": { "AccountId": "@{AccountUpsert.id}", ... }
+  "statusCode": 200,
+  "body": {
+    "action": "describe",
+    "instance_url": "https://sherminmax--uat.sandbox.my.salesforce.com",
+    "result": {
+      "Account": {"fieldCount": 155, "customFieldCount": 133, "recordTypes": [...]},
+      "Contact": {...}
     }
-  ]
+  }
 }
 ```
 
-## Files (to come in Phase 1)
+## Files
 
-- `template.yaml` — SAM template (Lambdas, API Gateway, SQS, DLQ, alarm).
-- `src/receiver/handler.ts` — webhook receiver Lambda.
-- `src/worker/handler.ts` — SF push worker Lambda.
-- `src/lib/salesforce.ts` — JWT signing, token cache, composite request builder.
-- `src/lib/twenty.ts` — Twenty REST client (writes `salesforce_account_id` back).
-- `tests/` — unit tests with SF API mocked.
+- `src/main.py` — handler. Currently describes; will grow to upsert + push activity.
+- `src/requirements.txt` — empty for v0a.
 
-## Open questions for Phase 0
+## Phase 2 roadmap for this Lambda
 
-See [`shermin/docs/sf-discovery.md`](../../docs/sf-discovery.md):
-- Salesforce edition confirmation
-- Existing custom field naming conventions to avoid clash
-- Sandbox to use for build (full / partial / dev)
-- Existing integration user / Connected App pattern in the org (cf. `Admin-SalesForceProxy-Service` repo)
+| Phase | Action | Capability |
+|---|---|---|
+| 2a (now) | `describe` | Smoke-test auth + read schema |
+| 2b | `upsertAccount`, `upsertContact` | Push retailer + contact records on stage transition |
+| 2c | `logActivity` | Push call/email/meeting from Twenty Activity object as SF Task |
+
+## Deploy
+
+Provisioned via Terraform in `shermin/infra/terraform/sf-integration/`. See that module's README.

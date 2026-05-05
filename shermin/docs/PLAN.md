@@ -50,6 +50,8 @@ Phase 0 produced a substantial discovery package on `main` already:
 | Workspace name | "Stax CRM" | UI |
 | File upload cap | Lifted from 10 MB (upstream default) to 100 MB. | `Dockerfile.shermin` |
 | File retention (FCA) | S3 lifecycle: Standard → Glacier IR @ 90d → Deep Archive @ 7y, never deleted. | `terraform/v0/storage.tf` |
+| Opportunities object | Soft-hidden (set `isActive: false`). Stock seeded sample records permanent-deleted. | Phase 2a |
+| Salesforce connection | `twenty-crm-sf-push-dev` Lambda live. Successfully describes Account (221 fields, 140 custom, 8 record types) and Contact (87 fields, 41 custom). | `terraform/sf-integration/`, `lambda/sf-push/` |
 
 ### ⚠️ Partially done
 

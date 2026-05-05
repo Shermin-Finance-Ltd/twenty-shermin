@@ -1,0 +1,4 @@
+# Phase 2a connection-only Lambda needs no third-party dependencies.
+# boto3 + urllib are in the Python 3.13 Lambda runtime.
+# Phase 2b will add the `requests` package (and `cryptography` if we ever do
+# direct JWT instead of via the shared auth Lambda).
